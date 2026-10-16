@@ -1,0 +1,2341 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Qmedstudy - Admin Dashboard</title>
+    <link rel="icon" type="image/png" href="logo.png" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- مكتبة الرسم البياني -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <aside
+      class="w-64 bg-slate-900 text-slate-300 flex flex-col hidden md:flex shrink-0"
+    >
+      <div class="p-6 border-b border-slate-800">
+        <h1 class="text-xl font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-shield-halved text-blue-500"></i> Admin Panel
+        </h1>
+      </div>
+      <nav class="flex-1 p-4 space-y-2">
+        <button
+          onclick="switchTab('users')"
+          id="tab-btn-users"
+          class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-600 text-white font-medium transition-colors"
+        >
+          <i class="fa-solid fa-users"></i> Users & Subscriptions
+        </button>
+        <button
+          onclick="switchTab('questions')"
+          id="tab-btn-questions"
+          class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 font-medium transition-colors"
+        >
+          <i class="fa-solid fa-database"></i> Manage Questions
+        </button>
+        <button
+          onclick="
+            switchTab('reports');
+            loadReports();
+          "
+          id="tab-btn-reports"
+          class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 font-medium transition-colors"
+        >
+          <i class="fa-solid fa-triangle-exclamation text-rose-500"></i>
+          Reported Questions
+        </button>
+        <button
+          onclick="
+            switchTab('analysis');
+            loadAnalysisData();
+          "
+          id="tab-btn-analysis"
+          class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 font-medium transition-colors"
+        >
+          <i class="fa-solid fa-chart-line text-green-500"></i>
+          Performance Analytics
+        </button>
+        <button
+          onclick="
+            switchTab('vouchers');
+            loadVouchers();
+          "
+          id="tab-btn-vouchers"
+          class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 font-medium transition-colors"
+        >
+          <i class="fa-solid fa-ticket text-amber-500"></i>
+          Activation Vouchers
+        </button>
+      </nav>
+      <div class="p-4 border-t border-slate-800">
+        <button
+          id="logout-btn"
+          class="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+        >
+          <i class="fa-solid fa-right-from-bracket"></i> Logout
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50">
+      <!-- Top Header -->
+      <header
+        class="bg-white h-16 border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm"
+      >
+        <h2 id="page-title" class="text-xl font-bold text-slate-800">
+          Users Management
+        </h2>
+        <div class="flex items-center gap-3">
+          <span
+            class="text-sm font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200"
+            >Admin Mode</span
+          >
+        </div>
+      </header>
+
+      <!-- Scrollable Area -->
+      <div class="flex-1 overflow-auto p-6 relative">
+        <!-- Loading Overlay -->
+        <div
+          id="loading-overlay"
+          class="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center hidden"
+        >
+          <i
+            class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-600 mb-2"
+          ></i>
+          <p class="text-slate-600 font-medium">Processing...</p>
+        </div>
+
+        <!-- USERS TAB -->
+        <div id="tab-users" class="block">
+          <!-- Admin Stats Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6">
+            <!-- إجمالي الطلاب -->
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4"
+            >
+              <div
+                class="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl"
+              >
+                <i class="fa-solid fa-users"></i>
+              </div>
+              <div>
+                <p
+                  class="text-xs text-slate-500 font-bold uppercase tracking-wider"
+                >
+                  Total Students
+                </p>
+                <h3
+                  id="stat-total-users"
+                  class="text-2xl font-black text-slate-800"
+                >
+                  ...
+                </h3>
+              </div>
+            </div>
+
+            <!-- الاشتراكات الفعالة -->
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4"
+            >
+              <div
+                class="w-12 h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center text-xl"
+              >
+                <i class="fa-solid fa-crown"></i>
+              </div>
+              <div>
+                <p
+                  class="text-xs text-slate-500 font-bold uppercase tracking-wider"
+                >
+                  Active Subscriptions
+                </p>
+                <h3
+                  id="stat-active-subs"
+                  class="text-2xl font-black text-slate-800"
+                >
+                  ...
+                </h3>
+              </div>
+            </div>
+
+            <!-- إجمالي الأسئلة -->
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4"
+            >
+              <div
+                class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl"
+              >
+                <i class="fa-solid fa-database"></i>
+              </div>
+              <div>
+                <p
+                  class="text-xs text-slate-500 font-bold uppercase tracking-wider"
+                >
+                  Total Questions
+                </p>
+                <h3
+                  id="stat-total-questions"
+                  class="text-2xl font-black text-slate-800"
+                >
+                  ...
+                </h3>
+              </div>
+            </div>
+          </div>
+          <div
+            class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+          >
+            <div
+              class="p-5 border-b border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-slate-50"
+            >
+              <h3 class="font-bold text-slate-800">Registered Students</h3>
+              <div class="flex items-center gap-2 w-full md:w-auto">
+                <input
+                  type="text"
+                  id="search-user-input"
+                  class="border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm w-full md:w-64"
+                  placeholder="Mobile number or name..."
+                  onkeypress="if (event.key === 'Enter') loadUsers(this.value);"
+                />
+                <button
+                  onclick="
+                    loadUsers(
+                      document.getElementById('search-user-input').value,
+                    )
+                  "
+                  class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                >
+                  Search
+                </button>
+                <button
+                  onclick="
+                    document.getElementById('search-user-input').value = '';
+                    loadUsers();
+                  "
+                  class="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center gap-1 ml-2"
+                  title="Reset & Refresh"
+                >
+                  <i class="fa-solid fa-rotate-right"></i>
+                </button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-slate-600">
+                <thead
+                  class="bg-slate-50 text-slate-500 uppercase font-semibold text-xs border-b border-slate-200"
+                >
+                  <tr>
+                    <th class="px-6 py-4">Name / University</th>
+                    <th class="px-6 py-4">Contact</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4">Expiry Date</th>
+                    <th class="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body" class="divide-y divide-slate-100">
+                  <!-- Users injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- QUESTIONS TAB -->
+        <div id="tab-questions" class="hidden">
+          <div
+            class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6"
+          >
+            <label class="block text-sm font-medium text-slate-700 mb-2"
+              >Search Questions (by text or ID)</label
+            >
+            <div class="flex gap-3">
+              <input
+                type="text"
+                id="search-q-input"
+                class="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                placeholder="e.g., Peptic ulcer..."
+                onkeypress="if (event.key === 'Enter') searchQuestions();"
+              />
+              <button
+                onclick="searchQuestions()"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-colors shadow-sm"
+              >
+                Search
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-4" id="questions-list">
+            <!-- Questions injected via JS -->
+            <div class="text-center py-10 text-slate-400">
+              Search to display questions here.
+            </div>
+          </div>
+        </div>
+
+        <!-- REPORTS TAB -->
+        <!-- ANALYSIS TAB -->
+        <div id="tab-analysis" class="hidden">
+          <!-- Date Filter Card -->
+          <div
+            class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6"
+          >
+            <h3
+              class="font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2"
+            >
+              <i class="fa-solid fa-filter text-blue-500 mr-2"></i> Filter
+              Activity by Date
+            </h3>
+            <div class="flex flex-wrap gap-4 items-end">
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1"
+                  >Start Date</label
+                >
+                <input
+                  type="date"
+                  id="analysis-start"
+                  class="border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 font-medium text-slate-700"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1"
+                  >End Date</label
+                >
+                <input
+                  type="date"
+                  id="analysis-end"
+                  class="border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 font-medium text-slate-700"
+                />
+              </div>
+              <button
+                onclick="loadAnalysisData()"
+                class="bg-slate-800 hover:bg-slate-900 text-white px-6 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"
+              >
+                <i class="fa-solid fa-magnifying-glass"></i> Analyze
+              </button>
+            </div>
+          </div>
+          <!-- Analysis Summary Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <!-- Total Exams Card -->
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4 transition-transform hover:-translate-y-1 duration-300"
+            >
+              <div
+                class="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0"
+              >
+                <i class="fa-solid fa-clipboard-check"></i>
+              </div>
+              <div>
+                <p
+                  class="text-[10px] text-slate-500 font-bold uppercase tracking-wider"
+                >
+                  Exams Taken
+                </p>
+                <h3
+                  id="analysis-total-exams"
+                  class="text-2xl md:text-3xl font-black text-slate-800"
+                >
+                  0
+                </h3>
+              </div>
+            </div>
+
+            <!-- Total Questions Card -->
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4 transition-transform hover:-translate-y-1 duration-300"
+            >
+              <div
+                class="w-12 h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center text-xl shrink-0"
+              >
+                <i class="fa-solid fa-layer-group"></i>
+              </div>
+              <div>
+                <p
+                  class="text-[10px] text-slate-500 font-bold uppercase tracking-wider"
+                >
+                  Questions Solved
+                </p>
+                <h3
+                  id="analysis-total-qs"
+                  class="text-2xl md:text-3xl font-black text-slate-800"
+                >
+                  0
+                </h3>
+              </div>
+            </div>
+
+            <!-- Average Score Card -->
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4 transition-transform hover:-translate-y-1 duration-300"
+            >
+              <div
+                class="w-12 h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center text-xl shrink-0"
+              >
+                <i class="fa-solid fa-bullseye"></i>
+              </div>
+              <div>
+                <p
+                  class="text-[10px] text-slate-500 font-bold uppercase tracking-wider"
+                >
+                  Average Score
+                </p>
+                <h3
+                  id="analysis-avg-score"
+                  class="text-2xl md:text-3xl font-black text-slate-800"
+                >
+                  0%
+                </h3>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Exams Chart -->
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 p-5"
+            >
+              <h4
+                class="font-bold text-slate-700 mb-4 text-sm flex items-center gap-2"
+              >
+                <i class="fa-solid fa-clipboard-check text-blue-500"></i> Exams
+                Solved / Day
+              </h4>
+              <div class="w-full h-64 relative">
+                <canvas id="examsChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Questions Chart -->
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 p-5"
+            >
+              <h4
+                class="font-bold text-slate-700 mb-4 text-sm flex items-center gap-2"
+              >
+                <i class="fa-solid fa-layer-group text-purple-500"></i>
+                Questions Solved / Day
+              </h4>
+              <div class="w-full h-64 relative">
+                <canvas id="questionsChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="tab-reports" class="hidden">
+          <div
+            class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+          >
+            <div
+              class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center"
+            >
+              <h3 class="font-bold text-slate-800">Pending Reports</h3>
+              <button
+                onclick="loadReports()"
+                class="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center gap-1"
+              >
+                <i class="fa-solid fa-rotate-right"></i> Refresh
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-slate-600">
+                <thead
+                  class="bg-slate-50 text-slate-500 uppercase font-semibold text-xs border-b border-slate-200"
+                >
+                  <tr>
+                    <th class="px-6 py-4">Question ID / Issue</th>
+                    <th class="px-6 py-4">Date</th>
+                    <th class="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody
+                  id="reports-table-body"
+                  class="divide-y divide-slate-100"
+                >
+                  <!-- Reports injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- VOUCHERS TAB -->
+        <div id="tab-vouchers" class="hidden space-y-6">
+          <!-- كروت إحصائيات الأكواد -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4"
+            >
+              <div
+                class="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-xl"
+              >
+                <i class="fa-solid fa-ticket"></i>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500 font-bold uppercase">
+                  Total Vouchers
+                </p>
+                <h3
+                  id="stat-vouchers-total"
+                  class="text-2xl font-black text-slate-800"
+                >
+                  0
+                </h3>
+              </div>
+            </div>
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4"
+            >
+              <div
+                class="w-12 h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center text-xl"
+              >
+                <i class="fa-solid fa-check-circle"></i>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500 font-bold uppercase">
+                  Available (Unused)
+                </p>
+                <h3
+                  id="stat-vouchers-unused"
+                  class="text-2xl font-black text-green-600"
+                >
+                  0
+                </h3>
+              </div>
+            </div>
+            <div
+              class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4"
+            >
+              <div
+                class="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl"
+              >
+                <i class="fa-solid fa-user-check"></i>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500 font-bold uppercase">
+                  Redeemed (Used)
+                </p>
+                <h3
+                  id="stat-vouchers-used"
+                  class="text-2xl font-black text-blue-600"
+                >
+                  0
+                </h3>
+              </div>
+            </div>
+          </div>
+
+          <!-- فورم توليد الأكواد (فردي / جماعي) -->
+          <div
+            class="bg-white rounded-xl shadow-sm border border-slate-200 p-6"
+          >
+            <h3
+              class="font-bold text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3"
+            >
+              <i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i>
+              Generate New Vouchers
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5"
+                  >Quantity (Count)</label
+                >
+                <input
+                  type="number"
+                  id="voucher-count"
+                  min="1"
+                  max="500"
+                  value="1"
+                  class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-800 outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5"
+                  >Duration</label
+                >
+                <select
+                  id="voucher-duration"
+                  class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 outline-none focus:border-blue-500"
+                >
+                  <option value="7">7 Days (1 Week)</option>
+                  <option value="15">15 Days</option>
+                  <option value="30" selected>30 Days (1 Month)</option>
+                  <option value="90">90 Days (3 Months)</option>
+                  <option value="180">180 Days (6 Months)</option>
+                  <option value="365">365 Days (1 Year)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1.5"
+                  >Batch Name / Note (Optional)</label
+                >
+                <input
+                  type="text"
+                  id="voucher-batch"
+                  placeholder="e.g., Book Fair, Gift, Batch 1"
+                  class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <button
+                  onclick="generateVouchers()"
+                  class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition-colors shadow-sm flex items-center justify-center gap-2"
+                >
+                  <i class="fa-solid fa-plus"></i> Generate Codes
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- جدول عرض وتتبع الأكواد -->
+          <div
+            class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+          >
+            <div
+              class="p-5 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+            >
+              <h3 class="font-bold text-slate-800">Vouchers List</h3>
+              <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <select
+                  id="filter-voucher-status"
+                  onchange="loadVouchers()"
+                  class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-700 outline-none"
+                >
+                  <option value="all">All Status</option>
+                  <option value="unused">Available Only</option>
+                  <option value="used">Used Only</option>
+                </select>
+                <input
+                  type="text"
+                  id="search-voucher-input"
+                  placeholder="Search code or batch..."
+                  onkeypress="if (event.key === 'Enter') loadVouchers();"
+                  class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm outline-none w-full sm:w-48"
+                />
+                <button
+                  onclick="loadVouchers()"
+                  class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-sm font-semibold"
+                >
+                  Search
+                </button>
+                <button
+                  onclick="copyAvailableVouchers()"
+                  class="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+                  title="Copy all currently listed available codes"
+                >
+                  <i class="fa-regular fa-copy"></i> Copy Available
+                </button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-slate-600">
+                <thead
+                  class="bg-slate-50 text-slate-500 uppercase font-semibold text-xs border-b border-slate-200"
+                >
+                  <tr>
+                    <th class="px-6 py-4">Voucher Code</th>
+                    <th class="px-6 py-4">Duration / Batch</th>
+                    <th class="px-6 py-4">Status</th>
+                    <th class="px-6 py-4">Used By (Student)</th>
+                    <th class="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody
+                  id="vouchers-table-body"
+                  class="divide-y divide-slate-100"
+                >
+                  <!-- Vouchers injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Reset Password Modal -->
+    <div
+      id="password-modal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[105] hidden flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col overflow-hidden animate-[fadeIn_0.2s_ease-out]"
+      >
+        <div
+          class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50"
+        >
+          <h3 class="font-bold text-slate-800">
+            <i class="fa-solid fa-key text-slate-500 mr-2"></i> Reset Password
+          </h3>
+          <button
+            onclick="closePasswordModal()"
+            class="text-slate-400 hover:text-red-500"
+          >
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+        <div class="p-6 space-y-4">
+          <input type="hidden" id="reset-pass-userid" />
+          <p class="text-sm text-slate-600 font-medium mb-2">
+            Set new password for: <br /><strong
+              id="reset-pass-name"
+              class="text-slate-900"
+            ></strong>
+          </p>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1"
+              >New Password (Min 6 chars)</label
+            >
+            <input
+              type="text"
+              id="admin-new-password"
+              placeholder="123456"
+              class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-blue-500 focus:border-blue-500 outline-none font-semibold text-slate-800"
+            />
+          </div>
+        </div>
+        <div
+          class="p-5 border-t border-slate-200 bg-slate-50 flex justify-end gap-3"
+        >
+          <button
+            onclick="closePasswordModal()"
+            class="px-4 py-2 rounded-lg font-semibold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            onclick="submitNewPassword()"
+            class="px-4 py-2 rounded-lg font-semibold text-white bg-slate-800 hover:bg-slate-900 shadow-sm flex items-center gap-2"
+          >
+            Update Password
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manage Subscription Modal -->
+    <div
+      id="renew-modal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[105] hidden flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col overflow-hidden animate-[fadeIn_0.2s_ease-out]"
+      >
+        <div
+          class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50"
+        >
+          <h3 class="font-bold text-slate-800">Manage Subscription</h3>
+          <button
+            onclick="closeRenewModal()"
+            class="text-slate-400 hover:text-red-500"
+          >
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+        <div class="p-6 space-y-4">
+          <input type="hidden" id="renew-user-id" />
+          <input type="hidden" id="renew-current-date" />
+
+          <p
+            class="text-sm text-slate-600 font-medium border-b border-slate-100 pb-2"
+          >
+            Student:
+            <strong id="renew-student-name" class="text-slate-900"></strong>
+          </p>
+
+          <!-- خيارات التعديل -->
+          <div class="space-y-3">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="sub_action"
+                value="add"
+                checked
+                class="text-blue-600 focus:ring-blue-500"
+                onchange="toggleSubMode()"
+              />
+              <span class="text-sm font-bold text-slate-700"
+                >Add Time (Extend)</span
+              >
+            </label>
+
+            <div id="sub-add-mode" class="flex gap-3 pl-6">
+              <div class="flex-1">
+                <input
+                  type="number"
+                  id="renew-amount"
+                  min="1"
+                  value="1"
+                  class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-semibold"
+                />
+              </div>
+              <div class="flex-1">
+                <select
+                  id="renew-unit"
+                  class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-semibold text-slate-700"
+                >
+                  <option value="days">Days</option>
+                  <option value="months" selected>Months</option>
+                </select>
+              </div>
+            </div>
+
+            <label class="flex items-center gap-2 cursor-pointer pt-2">
+              <input
+                type="radio"
+                name="sub_action"
+                value="set"
+                class="text-blue-600 focus:ring-blue-500"
+                onchange="toggleSubMode()"
+              />
+              <span class="text-sm font-bold text-slate-700"
+                >Set Exact Expiry Date</span
+              >
+            </label>
+
+            <div id="sub-set-mode" class="pl-6 hidden">
+              <input
+                type="date"
+                id="exact-expiry-date"
+                class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-semibold text-slate-700"
+              />
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 mt-2 bg-slate-50 p-2 rounded">
+            * Use "Add Time" to normally renew. Use "Set Exact Date" if you made
+            a mistake and need to fix the expiry date manually.
+          </p>
+        </div>
+        <div
+          class="p-5 border-t border-slate-200 bg-slate-50 flex justify-end gap-3"
+        >
+          <button
+            onclick="closeRenewModal()"
+            class="px-4 py-2 rounded-lg font-semibold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            onclick="submitRenew()"
+            class="px-4 py-2 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm flex items-center gap-2"
+          >
+            <i class="fa-solid fa-check"></i> Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Universal Alert Modal (Modern UI) -->
+    <div
+      id="custom-alert-modal"
+      class="fixed inset-0 z-[999] hidden items-center justify-center p-4"
+    >
+      <div
+        class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+      ></div>
+      <div
+        class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-[fadeIn_0.2s_ease-out] border border-slate-100"
+      >
+        <!-- شريط علوي ملون -->
+        <div id="alert-top-bar" class="h-1.5 w-full bg-blue-500"></div>
+
+        <div class="p-6 md:p-8">
+          <div class="flex items-start gap-4 md:gap-5">
+            <div
+              id="alert-icon-container"
+              class="flex-shrink-0 w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-xl border border-blue-100 shadow-sm"
+            >
+              <i id="alert-icon" class="fa-solid fa-circle-info"></i>
+            </div>
+            <div class="flex-1 pt-1 text-left" dir="auto">
+              <h3
+                id="alert-title"
+                class="text-lg md:text-xl font-bold text-slate-800 mb-1.5"
+              >
+                Notice
+              </h3>
+              <p
+                id="alert-message"
+                class="text-slate-600 text-sm md:text-base leading-relaxed"
+              ></p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end"
+        >
+          <button
+            id="alert-close-btn"
+            class="min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-sm transform hover:-translate-y-0.5"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Confirm Modal (Modern UI) -->
+    <div
+      id="custom-confirm-modal"
+      class="fixed inset-0 z-[999] hidden items-center justify-center p-4"
+    >
+      <div
+        class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+      ></div>
+      <div
+        class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-[fadeIn_0.2s_ease-out] border border-slate-100"
+      >
+        <div class="h-1.5 w-full bg-amber-500"></div>
+        <div class="p-6 md:p-8">
+          <div class="flex items-start gap-4 md:gap-5">
+            <div
+              class="flex-shrink-0 w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 text-xl border border-amber-100 shadow-sm"
+            >
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="flex-1 pt-1 text-left" dir="auto">
+              <h3
+                id="confirm-title"
+                class="text-lg md:text-xl font-bold text-slate-800 mb-1.5"
+              >
+                Wait a moment!
+              </h3>
+              <p
+                id="confirm-message"
+                class="text-slate-600 text-sm md:text-base leading-relaxed"
+              ></p>
+            </div>
+          </div>
+        </div>
+        <div
+          class="bg-slate-50 px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-3"
+        >
+          <button
+            id="confirm-cancel-btn"
+            class="w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 px-6 rounded-xl transition-all border border-slate-200 shadow-sm"
+          >
+            Cancel
+          </button>
+          <button
+            id="confirm-ok-btn"
+            class="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-sm"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Question Modal (Unique IDs) -->
+    <div
+      id="edit-q-modal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"
+      >
+        <div
+          class="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl"
+        >
+          <h3 class="font-bold text-slate-800 text-lg">Edit Question</h3>
+          <button
+            onclick="closeEditModal()"
+            class="text-slate-400 hover:text-red-500"
+          >
+            <i class="fa-solid fa-xmark text-xl"></i>
+          </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto space-y-4 flex-1">
+          <input type="hidden" id="unique-q-id" />
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1"
+              >Question Text</label
+            >
+            <textarea
+              id="unique-q-text"
+              rows="3"
+              class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            ></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1"
+                >Option A</label
+              >
+              <input
+                type="text"
+                id="unique-q-a"
+                class="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1"
+                >Option B</label
+              >
+              <input
+                type="text"
+                id="unique-q-b"
+                class="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1"
+                >Option C</label
+              >
+              <input
+                type="text"
+                id="unique-q-c"
+                class="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1"
+                >Option D</label
+              >
+              <input
+                type="text"
+                id="unique-q-d"
+                class="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1"
+                >Option E</label
+              >
+              <input
+                type="text"
+                id="unique-q-e"
+                class="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-green-600 mb-1"
+                >Correct Answer</label
+              >
+              <select
+                id="unique-q-correct"
+                class="w-full border border-green-300 bg-green-50 rounded-md px-3 py-1.5 text-sm font-bold text-green-700"
+              >
+                <option value="a">A</option>
+                <option value="b">B</option>
+                <option value="c">C</option>
+                <option value="d">D</option>
+                <option value="e">E</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1"
+              >Explanation</label
+            >
+            <textarea
+              id="unique-q-exp"
+              rows="3"
+              class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            ></textarea>
+          </div>
+        </div>
+
+        <div
+          class="p-5 border-t border-slate-200 bg-slate-50 rounded-b-2xl flex justify-end gap-3"
+        >
+          <button
+            onclick="closeEditModal()"
+            class="px-5 py-2.5 rounded-lg font-semibold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            onclick="saveQuestion()"
+            class="px-5 py-2.5 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-2 shadow-sm"
+          >
+            <i class="fa-solid fa-floppy-disk"></i> Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 1. Supabase Config
+      const supabaseUrl = "https://tteswqndzfmnakuxzjyy.supabase.co";
+      const supabaseKey = "sb_publishable_6ITKD07eDwp45N5nIvTeew_QgNL6l3D";
+      const client = supabase.createClient(supabaseUrl, supabaseKey);
+
+      // 2. Auth & Role Check
+      async function checkAdminAccess() {
+        const {
+          data: { session },
+        } = await client.auth.getSession();
+        if (!session) {
+          window.location.href = "login.html";
+          return;
+        }
+
+        // التحقق من أن المستخدم إدمن
+        const { data: profile } = await client
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+
+        if (!profile || profile.role !== "admin") {
+          showCustomAlert(
+            "Access Denied",
+            "You do not have Admin privileges.",
+            "error",
+          );
+          window.location.href = "index2 Image.html";
+        } else {
+          loadUsers(); // تحميل البيانات عند تأكيد الصلاحية
+          loadAdminStats(); // تحميل أرقام الكروت الإحصائية
+        }
+      }
+      checkAdminAccess();
+
+      // جلب الإحصائيات السريعة للوحة التحكم
+      async function loadAdminStats() {
+        try {
+          // 1. حساب إجمالي الطلاب (نستبعد الإدمن)
+          const { count: totalUsers, error: err1 } = await client
+            .from("profiles")
+            .select("*", { count: "exact", head: true })
+            .neq("role", "admin");
+
+          // 2. حساب الاشتراكات الفعالة (حالتها active وتاريخها لم ينتهِ)
+          const now = new Date().toISOString();
+          const { count: activeSubs, error: err2 } = await client
+            .from("profiles")
+            .select("*", { count: "exact", head: true })
+            .eq("subscription_status", "active")
+            .gte("subscription_end_date", now);
+
+          // 3. حساب إجمالي الأسئلة في بنك الأسئلة
+          const { count: totalQuestions, error: err3 } = await client
+            .from("questions")
+            .select("*", { count: "exact", head: true });
+
+          if (!err1)
+            document.getElementById("stat-total-users").textContent =
+              totalUsers || 0;
+          if (!err2)
+            document.getElementById("stat-active-subs").textContent =
+              activeSubs || 0;
+          if (!err3)
+            document.getElementById("stat-total-questions").textContent =
+              totalQuestions || 0;
+        } catch (error) {
+          console.error("Error loading admin stats:", error.message);
+        }
+      }
+
+      // 3. UI Helpers
+
+      // --- دالة إظهار التنبيهات المخصصة (Modern UI) ---
+      function showCustomAlert(title, message, type = "info") {
+        const modal = document.getElementById("custom-alert-modal");
+        const iconContainer = document.getElementById("alert-icon-container");
+        const icon = document.getElementById("alert-icon");
+        const topBar = document.getElementById("alert-top-bar");
+        const closeBtn = document.getElementById("alert-close-btn");
+
+        document.getElementById("alert-title").innerHTML = title;
+        document.getElementById("alert-message").innerHTML = message;
+
+        iconContainer.className =
+          "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-xl border shadow-sm";
+        topBar.className = "h-1.5 w-full";
+
+        if (type === "success") {
+          iconContainer.classList.add(
+            "bg-green-50",
+            "text-green-600",
+            "border-green-100",
+          );
+          topBar.classList.add("bg-green-500");
+          icon.className = "fa-solid fa-check";
+          closeBtn.className =
+            "min-w-[120px] bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-sm transform hover:-translate-y-0.5";
+        } else if (type === "error") {
+          iconContainer.classList.add(
+            "bg-red-50",
+            "text-red-600",
+            "border-red-100",
+          );
+          topBar.classList.add("bg-red-500");
+          icon.className = "fa-solid fa-triangle-exclamation";
+          closeBtn.className =
+            "min-w-[120px] bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-sm transform hover:-translate-y-0.5";
+        } else {
+          iconContainer.classList.add(
+            "bg-blue-50",
+            "text-blue-600",
+            "border-blue-100",
+          );
+          topBar.classList.add("bg-blue-500");
+          icon.className = "fa-solid fa-info";
+          closeBtn.className =
+            "min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl transition-all shadow-sm transform hover:-translate-y-0.5";
+        }
+
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
+
+      // حدث إغلاق التنبيه
+      document
+        .getElementById("alert-close-btn")
+        .addEventListener("click", () => {
+          const modal = document.getElementById("custom-alert-modal");
+          modal.classList.add("hidden");
+          modal.classList.remove("flex");
+        });
+      // --- دالة إظهار نافذة التأكيد (Dynamic Confirm Modal) ---
+      let confirmCallback = null;
+      function showCustomConfirm(
+        title,
+        message,
+        confirmText,
+        cancelText,
+        onConfirm,
+      ) {
+        const modal = document.getElementById("custom-confirm-modal");
+        document.getElementById("confirm-title").textContent = title;
+        document.getElementById("confirm-message").innerHTML = message;
+        document.getElementById("confirm-ok-btn").textContent = confirmText;
+        document.getElementById("confirm-cancel-btn").textContent = cancelText;
+        confirmCallback = onConfirm;
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
+
+      // أزرار التحكم في نافذة التأكيد
+      document.getElementById("confirm-cancel-btn").onclick = () => {
+        const modal = document.getElementById("custom-confirm-modal");
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      };
+
+      document.getElementById("confirm-ok-btn").onclick = () => {
+        const modal = document.getElementById("custom-confirm-modal");
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+        if (confirmCallback) confirmCallback(); // تنفيذ أمر الحذف
+      };
+
+      function showLoading(show) {
+        document.getElementById("loading-overlay").style.display = show
+          ? "flex"
+          : "none";
+      }
+
+      function switchTab(tabId) {
+        // إخفاء كل التبويبات
+        ["users", "questions", "reports", "analysis", "vouchers"].forEach(
+          (id) => {
+            document.getElementById(`tab-${id}`).classList.add("hidden");
+          },
+        );
+        document.getElementById(`tab-${tabId}`).classList.remove("hidden");
+
+        // ضبط ألوان الأزرار
+        const tabs = ["users", "questions", "reports", "analysis", "vouchers"];
+        tabs.forEach((id) => {
+          const btn = document.getElementById(`tab-btn-${id}`);
+          if (btn) {
+            btn.className =
+              "w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors " +
+              (tabId === id
+                ? "bg-blue-600 text-white shadow-md"
+                : "hover:bg-slate-800 text-slate-300");
+          }
+        });
+
+        // تغيير عنوان الصفحة
+        const titles = {
+          users: "Users Management",
+          questions: "Manage Questions",
+          reports: "Reported Questions",
+          analysis: "Performance Analytics",
+          vouchers: "Activation Vouchers Management",
+        };
+        document.getElementById("page-title").textContent = titles[tabId];
+      }
+
+      // ==========================================
+      // VOUCHERS MANAGEMENT LOGIC
+      // ==========================================
+      let currentAvailableCodes = [];
+
+      function generateRandomCodeString() {
+        // حروف كبيرة + حروف صغيرة + أرقام + رموز خاصة قوية وآمنة للنقل والنسخ
+        const chars =
+          "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*+=?";
+        const generateSegment = (length) => {
+          let segment = "";
+          const randomValues = new Uint32Array(length);
+          window.crypto.getRandomValues(randomValues);
+          for (let i = 0; i < length; i++) {
+            segment += chars.charAt(randomValues[i] % chars.length);
+          }
+          return segment;
+        };
+
+        // النتيجة: QMED + 3 مقاطع كل مقطع 8 خانات (إجمالي 31 حرفاً ورمزاً معقداً)
+        return `QMED-${generateSegment(8)}-${generateSegment(8)}-${generateSegment(8)}`;
+      }
+
+      async function generateVouchers() {
+        const count = parseInt(document.getElementById("voucher-count").value);
+        const duration = parseInt(
+          document.getElementById("voucher-duration").value,
+        );
+        const batchName =
+          document.getElementById("voucher-batch").value.trim() || null;
+
+        if (!count || count < 1 || count > 500) {
+          showCustomAlert(
+            "Invalid Quantity",
+            "Please enter a quantity between 1 and 500.",
+            "error",
+          );
+          return;
+        }
+
+        showLoading(true);
+        try {
+          const newVouchers = [];
+          const generatedSet = new Set();
+
+          while (newVouchers.length < count) {
+            const code = generateRandomCodeString();
+            if (!generatedSet.has(code)) {
+              generatedSet.add(code);
+              newVouchers.push({
+                code: code,
+                duration_days: duration,
+                batch_name: batchName,
+              });
+            }
+          }
+
+          const { error } = await client
+            .from("activation_vouchers")
+            .insert(newVouchers);
+          if (error) throw error;
+
+          document.getElementById("voucher-count").value = 1;
+          showCustomAlert(
+            "Success",
+            `Successfully generated <strong>${count}</strong> activation voucher(s)!`,
+            "success",
+          );
+          loadVouchers();
+        } catch (error) {
+          showCustomAlert(
+            "Error",
+            "Failed to generate vouchers: " + error.message,
+            "error",
+          );
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      async function loadVouchers() {
+        showLoading(true);
+        try {
+          const statusFilter = document.getElementById(
+            "filter-voucher-status",
+          ).value;
+          const searchTerm = document
+            .getElementById("search-voucher-input")
+            .value.trim();
+
+          // جلب الإحصائيات السريعة للأكواد
+          const { count: totalCount } = await client
+            .from("activation_vouchers")
+            .select("*", { count: "exact", head: true });
+          const { count: unusedCount } = await client
+            .from("activation_vouchers")
+            .select("*", { count: "exact", head: true })
+            .eq("is_used", false);
+          const { count: usedCount } = await client
+            .from("activation_vouchers")
+            .select("*", { count: "exact", head: true })
+            .eq("is_used", true);
+
+          document.getElementById("stat-vouchers-total").textContent =
+            totalCount || 0;
+          document.getElementById("stat-vouchers-unused").textContent =
+            unusedCount || 0;
+          document.getElementById("stat-vouchers-used").textContent =
+            usedCount || 0;
+
+          // بناء استعلام الجدول مع جلب بيانات الطالب الذي استخدم الكود
+          let query = client
+            .from("activation_vouchers")
+            .select("*, profiles:used_by(full_name, mobile_number)")
+            .order("created_at", { ascending: false })
+            .limit(200);
+
+          if (statusFilter === "unused") query = query.eq("is_used", false);
+          if (statusFilter === "used") query = query.eq("is_used", true);
+          if (searchTerm !== "") {
+            query = query.or(
+              `code.ilike.%${searchTerm}%,batch_name.ilike.%${searchTerm}%`,
+            );
+          }
+
+          const { data, error } = await query;
+          if (error) throw error;
+
+          const tbody = document.getElementById("vouchers-table-body");
+          tbody.innerHTML = "";
+          currentAvailableCodes = [];
+
+          if (!data || data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-slate-500 font-medium">No vouchers found.</td></tr>`;
+            return;
+          }
+
+          data.forEach((v) => {
+            if (!v.is_used) currentAvailableCodes.push(v.code);
+
+            const statusBadge = v.is_used
+              ? `<span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-xs font-bold">Used</span>`
+              : `<span class="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-bold">Available</span>`;
+
+            const usedByInfo =
+              v.is_used && v.profiles
+                ? `<div class="font-bold text-slate-800">${v.profiles.full_name || "Student"}</div>
+                 <div class="text-xs text-slate-500">${v.profiles.mobile_number || ""} • ${new Date(v.used_at).toLocaleDateString("en-GB")}</div>`
+                : `<span class="text-slate-400">-</span>`;
+
+            tbody.innerHTML += `
+              <tr class="hover:bg-slate-50/50 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded border border-slate-200 select-all">${v.code}</span>
+                    <button onclick="navigator.clipboard.writeText('${v.code}'); showCustomAlert('Copied', 'Code copied to clipboard!', 'success');" class="text-slate-400 hover:text-blue-600" title="Copy Code">
+                      <i class="fa-regular fa-copy"></i>
+                    </button>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="font-bold text-slate-700">${v.duration_days} Days</div>
+                  <div class="text-xs text-slate-400">${v.batch_name || "No Batch"}</div>
+                </td>
+                <td class="px-6 py-4">${statusBadge}</td>
+                <td class="px-6 py-4">${usedByInfo}</td>
+                <td class="px-6 py-4 text-right">
+                  ${
+                    !v.is_used
+                      ? `<button onclick="deleteVoucher('${v.id}', '${v.code}')" class="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-red-200" title="Delete Voucher">
+                          <i class="fa-solid fa-trash"></i>
+                        </button>`
+                      : `<span class="text-xs text-slate-400 italic">Locked</span>`
+                  }
+                </td>
+              </tr>
+            `;
+          });
+        } catch (error) {
+          showCustomAlert(
+            "Error",
+            "Failed to load vouchers: " + error.message,
+            "error",
+          );
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      function copyAvailableVouchers() {
+        if (currentAvailableCodes.length === 0) {
+          showCustomAlert(
+            "No Codes",
+            "There are no available codes in the current view to copy.",
+            "info",
+          );
+          return;
+        }
+        navigator.clipboard.writeText(currentAvailableCodes.join("\n"));
+        showCustomAlert(
+          "Copied!",
+          `Copied <strong>${currentAvailableCodes.length}</strong> available voucher codes to clipboard.`,
+          "success",
+        );
+      }
+
+      function deleteVoucher(id, code) {
+        showCustomConfirm(
+          "Delete Voucher",
+          `Are you sure you want to permanently delete voucher <strong>${code}</strong>?`,
+          "Yes, Delete",
+          "Cancel",
+          async () => {
+            showLoading(true);
+            try {
+              const { error } = await client
+                .from("activation_vouchers")
+                .delete()
+                .eq("id", id);
+              if (error) throw error;
+              loadVouchers();
+            } catch (error) {
+              showCustomAlert(
+                "Error",
+                "Could not delete voucher: " + error.message,
+                "error",
+              );
+            } finally {
+              showLoading(false);
+            }
+          },
+        );
+      }
+
+      async function loadUsers(searchTerm = "") {
+        showLoading(true);
+        try {
+          // بناء الاستعلام الأساسي
+          let query = client
+            .from("profiles")
+            .select("*")
+            .order("created_at", { ascending: false });
+
+          // إضافة فلتر البحث إذا قمت بكتابة شيء في مربع البحث
+          if (searchTerm.trim() !== "") {
+            query = query.or(
+              `full_name.ilike.%${searchTerm}%,mobile_number.ilike.%${searchTerm}%`,
+            );
+          }
+
+          const { data, error } = await query;
+          if (error) throw error;
+
+          const tbody = document.getElementById("users-table-body");
+          tbody.innerHTML = "";
+
+          // إذا لم يجد نتائج للبحث
+          if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-slate-500 font-medium">No students found matching "${searchTerm}".</td></tr>`;
+            return;
+          }
+
+          data.forEach((user) => {
+            const isExpired = user.subscription_end_date
+              ? new Date(user.subscription_end_date) < new Date()
+              : true;
+            const statusBadge =
+              user.subscription_status === "active" && !isExpired
+                ? `<span class="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-bold">Active</span>`
+                : `<span class="bg-red-100 text-red-700 px-2.5 py-1 rounded-md text-xs font-bold">Expired / Inactive</span>`;
+
+            const expiryDate = user.subscription_end_date
+              ? new Date(user.subscription_end_date).toLocaleString("en-US", {
+                  timeZone: "Africa/Cairo",
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })
+              : "N/A";
+
+            tbody.innerHTML += `
+              <tr class="hover:bg-slate-50/50 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="font-bold text-slate-800">${user.full_name || "N/A"}</div>
+                  <div class="text-xs text-slate-500">${user.university_name || "-"}</div>
+                </td>
+                <td class="px-6 py-4 font-medium text-slate-700">${user.mobile_number || "-"}</td>
+                <td class="px-6 py-4">${statusBadge}</td>
+                <td class="px-6 py-4 text-slate-500 font-medium">${expiryDate}</td>
+                <td class="px-6 py-4 flex items-center justify-end gap-2">
+                  <!-- زر تغيير الباسوورد -->
+                  <button onclick="openPasswordModal('${user.id}', '${user.full_name || "Student"}')" class="bg-slate-100 text-slate-700 hover:bg-slate-800 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-slate-300" title="تغيير كلمة المرور">
+                    <i class="fa-solid fa-key"></i>
+                  </button>
+                  
+                  <!-- زر مسح بصمة الجهاز -->
+                  <button onclick="resetUserDevice('${user.id}')" class="bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-amber-200 hover:border-amber-600" title="مسح بصمة الجهاز">
+                    <i class="fa-solid fa-mobile-screen"></i>
+                  </button>
+                  
+                  <!-- زر تمديد/تعديل الاشتراك -->
+                  <button onclick="openRenewModal('${user.id}', '${user.subscription_end_date}', '${user.full_name || "Student"}')" class="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-blue-200 hover:border-blue-600" title="Manage Subscription">
+                    <i class="fa-solid fa-calendar-plus"></i>
+                  </button>
+
+                  <!-- زر إنهاء الاشتراك (Revoke) يظهر فقط إذا كان الاشتراك فعالاً -->
+                  ${
+                    user.subscription_status === "active" && !isExpired
+                      ? `
+                  <button onclick="revokeSubscription('${user.id}', '${user.full_name || "Student"}')" class="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-red-200 hover:border-red-600" title="Revoke Access">
+                    <i class="fa-solid fa-ban"></i>
+                  </button>
+                  `
+                      : ""
+                  }
+                </td>
+              </tr>
+            `;
+          });
+        } catch (error) {
+          showCustomAlert(
+            "Error",
+            "Something went wrong: " + error.message,
+            "error",
+          );
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      // --- دوال التحكم في الاشتراكات (تجديد، تعديل، إنهاء) ---
+
+      function toggleSubMode() {
+        const mode = document.querySelector(
+          'input[name="sub_action"]:checked',
+        ).value;
+        if (mode === "add") {
+          document.getElementById("sub-add-mode").classList.remove("hidden");
+          document.getElementById("sub-set-mode").classList.add("hidden");
+        } else {
+          document.getElementById("sub-add-mode").classList.add("hidden");
+          document.getElementById("sub-set-mode").classList.remove("hidden");
+        }
+      }
+
+      function openRenewModal(userId, currentEndDate, userName) {
+        document.getElementById("renew-user-id").value = userId;
+        document.getElementById("renew-current-date").value = currentEndDate;
+        document.getElementById("renew-student-name").textContent = userName;
+        document.getElementById("renew-amount").value = 1;
+        document.getElementById("renew-unit").value = "months";
+
+        // ضبط تاريخ اليوم كافتراضي في حقل الـ Date
+        document.getElementById("exact-expiry-date").value = new Date()
+          .toISOString()
+          .split("T")[0];
+
+        document.getElementById("renew-modal").classList.remove("hidden");
+      }
+
+      function closeRenewModal() {
+        document.getElementById("renew-modal").classList.add("hidden");
+      }
+
+      async function submitRenew() {
+        const userId = document.getElementById("renew-user-id").value;
+        const mode = document.querySelector(
+          'input[name="sub_action"]:checked',
+        ).value;
+
+        let finalDate = new Date();
+
+        if (mode === "add") {
+          const amount = parseInt(
+            document.getElementById("renew-amount").value,
+          );
+          const unit = document.getElementById("renew-unit").value;
+          const currentEndDateStr =
+            document.getElementById("renew-current-date").value;
+
+          if (!amount || amount <= 0) {
+            showCustomAlert(
+              "Invalid Input",
+              "Please enter a valid number.",
+              "error",
+            );
+            return;
+          }
+
+          if (
+            currentEndDateStr &&
+            currentEndDateStr !== "null" &&
+            currentEndDateStr !== "undefined"
+          ) {
+            const currentEnd = new Date(currentEndDateStr);
+            if (currentEnd > finalDate) {
+              finalDate = currentEnd; // نبدأ من تاريخ الانتهاء الحالي لو لسه شغال
+            }
+          }
+
+          if (unit === "days") {
+            finalDate.setDate(finalDate.getDate() + amount);
+          } else if (unit === "months") {
+            finalDate.setMonth(finalDate.getMonth() + amount);
+          }
+        } else {
+          // وضع التحديد اليدوي (Set Exact Date)
+          const exactDateVal =
+            document.getElementById("exact-expiry-date").value;
+          if (!exactDateVal) {
+            showCustomAlert("Invalid Input", "Please select a date.", "error");
+            return;
+          }
+          finalDate = new Date(exactDateVal);
+          // جعل الوقت في نهاية اليوم
+          finalDate.setHours(23, 59, 59, 999);
+        }
+
+        showLoading(true);
+        try {
+          const { error } = await client
+            .from("profiles")
+            .update({
+              subscription_status: "active",
+              subscription_end_date: finalDate.toISOString(),
+            })
+            .eq("id", userId);
+
+          if (error) throw error;
+
+          closeRenewModal();
+          showCustomAlert(
+            "Success",
+            "Subscription updated successfully!",
+            "success",
+          );
+          loadUsers();
+          loadAdminStats();
+        } catch (error) {
+          showCustomAlert(
+            "Error",
+            "Something went wrong: " + error.message,
+            "error",
+          );
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      // --- دالة إنهاء الاشتراك الفوري (Revoke Access) ---
+      function revokeSubscription(userId, userName) {
+        showCustomConfirm(
+          "Revoke Access",
+          `Are you sure you want to end the subscription for <strong>${userName}</strong> immediately? They will lose access to premium features.`,
+          "Yes, Revoke",
+          "Cancel",
+          async () => {
+            showLoading(true);
+            try {
+              // جعل تاريخ الانتهاء هو الأمس وتغيير الحالة
+              const yesterday = new Date();
+              yesterday.setDate(yesterday.getDate() - 1);
+
+              const { error } = await client
+                .from("profiles")
+                .update({
+                  subscription_status: "expired",
+                  subscription_end_date: yesterday.toISOString(),
+                })
+                .eq("id", userId);
+
+              if (error) throw error;
+
+              showCustomAlert(
+                "Revoked",
+                "Subscription has been terminated.",
+                "success",
+              );
+              loadUsers(); // تحديث الجدول لترى الحالة الحمراء (Expired)
+              loadAdminStats(); // تحديث الأرقام الإحصائية
+            } catch (error) {
+              showCustomAlert(
+                "Error",
+                "Failed to revoke: " + error.message,
+                "error",
+              );
+            } finally {
+              showLoading(false);
+            }
+          },
+        );
+      }
+
+      async function resetUserDevice(userId) {
+        if (
+          !confirm(
+            "Are you sure you want to reset the device lock for this user? This will log them out from the old device immediately.",
+          )
+        ) {
+          return;
+        }
+
+        showLoading(true);
+        try {
+          // استدعاء دالة الـ RPC التي تمسح الجلسات وتلغي بصمة الجهاز معاً
+          const { error } = await client.rpc("admin_force_logout_and_reset", {
+            target_user_id: userId,
+          });
+
+          if (error) throw error;
+
+          showCustomAlert(
+            "Success",
+            "Device lock reset successfully! The user has been logged out from the old device.",
+            "success",
+          );
+          loadUsers();
+        } catch (error) {
+          showCustomAlert(
+            "Error",
+            "Something went wrong: " + error.message,
+            "error",
+          );
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      // دوال تغيير الباسوورد (Admin Override)
+      function openPasswordModal(userId, userName) {
+        document.getElementById("reset-pass-userid").value = userId;
+        document.getElementById("reset-pass-name").textContent = userName;
+        document.getElementById("admin-new-password").value = "";
+        document.getElementById("password-modal").classList.remove("hidden");
+      }
+
+      function closePasswordModal() {
+        document.getElementById("password-modal").classList.add("hidden");
+      }
+
+      async function submitNewPassword() {
+        const userId = document.getElementById("reset-pass-userid").value;
+        const newPass = document
+          .getElementById("admin-new-password")
+          .value.trim();
+
+        if (newPass.length < 6) {
+          showCustomAlert(
+            "Invalid Password",
+            "Password must be at least 6 characters long.",
+            "error",
+          );
+          return;
+        }
+
+        showLoading(true);
+        try {
+          // استدعاء الدالة السرية (RPC) التي قمنا بإنشائها في قاعدة البيانات
+          const { error } = await client.rpc("admin_update_user_password", {
+            target_user_id: userId,
+            new_password: newPass,
+          });
+
+          if (error) throw error;
+
+          showCustomAlert(
+            "Success",
+            "Password updated successfully! The student can now log in with the new password.",
+            "success",
+          );
+          closePasswordModal();
+        } catch (error) {
+          showCustomAlert(
+            "Error",
+            "Something went wrong: " + error.message,
+            "error",
+          );
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      // 5. Questions Management Logic
+      async function searchQuestions() {
+        const query = document.getElementById("search-q-input").value.trim();
+        if (!query) return;
+
+        showLoading(true);
+        try {
+          // التحقق مما إذا كان مدخل البحث يبدو كـ ID
+          const isExactId =
+            /^\d+$/.test(query) ||
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+              query,
+            );
+
+          let dbQuery = client.from("questions").select("*");
+
+          if (isExactId) {
+            // استخدام علامات الـ Backticks الصحيحة
+            dbQuery = dbQuery.or(
+              `id.eq.${query},question_text.ilike.%${query}%`,
+            );
+          } else {
+            dbQuery = dbQuery.ilike("question_text", `%${query}%`);
+          }
+
+          const { data, error } = await dbQuery.limit(20);
+          if (error) throw error;
+
+          const container = document.getElementById("questions-list");
+          container.innerHTML = "";
+
+          if (data.length === 0) {
+            container.innerHTML =
+              '<div class="text-center py-10 text-slate-400 font-medium">No questions found matching your search.</div>';
+            return;
+          }
+
+          data.forEach((q) => {
+            container.innerHTML += `
+              <div class="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow flex justify-between items-start gap-4 group">
+                <div>
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">${q.module_name || "N/A"}</span>
+                    <span class="text-xs text-slate-400 font-medium">ID: ${q.id}</span>
+                  </div>
+                  <p class="text-slate-800 text-sm font-medium line-clamp-2">${q.question_text}</p>
+                </div>
+                <button onclick="openEditModal('${q.id}')" class="shrink-0 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-blue-200">
+                  <i class="fa-solid fa-pen mr-1"></i> Edit
+                </button>
+              </div>
+            `;
+          });
+        } catch (error) {
+          showCustomAlert(
+            "Error",
+            "Something went wrong: " + error.message,
+            "error",
+          );
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      // نافذة التعديل (Modal)
+      let currentEditingId = null;
+
+      async function openEditModal(id) {
+        showLoading(true);
+        try {
+          const { data, error } = await client
+            .from("questions")
+            .select("*")
+            .eq("id", id)
+            .single();
+          if (error) throw error;
+
+          currentEditingId = data.id;
+
+          // ربط البيانات بالحقول ذات الأسماء الفريدة
+          document.getElementById("unique-q-text").value =
+            data.question_text || "";
+          document.getElementById("unique-q-a").value = data.option_a || "";
+          document.getElementById("unique-q-b").value = data.option_b || "";
+          document.getElementById("unique-q-c").value = data.option_c || "";
+          document.getElementById("unique-q-d").value = data.option_d || "";
+          document.getElementById("unique-q-e").value = data.option_e || "";
+
+          const correctAns = data.correct_answer
+            ? data.correct_answer.toLowerCase()
+            : "a";
+          document.getElementById("unique-q-correct").value = correctAns;
+
+          document.getElementById("unique-q-exp").value =
+            data.explanation || "";
+
+          document.getElementById("edit-q-modal").classList.remove("hidden");
+        } catch (error) {
+          showCustomAlert(
+            "Error",
+            "Something went wrong: " + error.message,
+            "error",
+          );
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      function closeEditModal() {
+        document.getElementById("edit-q-modal").classList.add("hidden");
+        currentEditingId = null;
+      }
+
+      async function saveQuestion() {
+        if (!currentEditingId) return;
+        showLoading(true);
+
+        const updateData = {
+          question_text: document.getElementById("unique-q-text").value.trim(),
+          option_a: document.getElementById("unique-q-a").value.trim(),
+          option_b: document.getElementById("unique-q-b").value.trim(),
+          option_c: document.getElementById("unique-q-c").value.trim(),
+          option_d: document.getElementById("unique-q-d").value.trim(),
+          option_e: document.getElementById("unique-q-e").value.trim() || null,
+          correct_answer: document
+            .getElementById("unique-q-correct")
+            .value.toLowerCase(),
+          explanation:
+            document.getElementById("unique-q-exp").value.trim() || null,
+        };
+
+        if (!updateData.question_text) {
+          showCustomAlert(
+            "Validation Error",
+            "Question text cannot be empty.",
+            "error",
+          );
+          showLoading(false);
+          return;
+        }
+
+        try {
+          // 1. تحديث السؤال في قاعدة البيانات
+          const { error } = await client
+            .from("questions")
+            .update(updateData)
+            .eq("id", currentEditingId);
+          if (error) throw error;
+
+          // 2. مسح البلاغ (أو البلاغات) المتعلقة بهذا السؤال تلقائياً بعد تصحيحه
+          await client
+            .from("reported_questions")
+            .delete()
+            .eq("question_id", currentEditingId);
+
+          closeEditModal();
+
+          // 3. تحديث الواجهة (حسب التاب المفتوح حالياً)
+          if (
+            !document
+              .getElementById("tab-questions")
+              .classList.contains("hidden")
+          ) {
+            searchQuestions();
+          }
+          if (
+            !document.getElementById("tab-reports").classList.contains("hidden")
+          ) {
+            loadReports();
+          }
+
+          showCustomAlert(
+            "Success",
+            "Question updated and related reports are cleared!",
+            "success",
+          );
+        } catch (error) {
+          showCustomAlert(
+            "Error",
+            "Something went wrong: " + error.message,
+            "error",
+          );
+        } finally {
+          showLoading(false);
+        }
+      }
+      // --- Reports Logic ---
+      async function loadReports() {
+        showLoading(true);
+        try {
+          // جلب البلاغات مع تفاصيل السؤال
+          const { data, error } = await client
+            .from("reported_questions")
+            .select(
+              "id, question_id, report_type, created_at, status, questions(question_text)",
+            )
+            .eq("status", "pending")
+            .order("created_at", { ascending: false });
+
+          if (error) throw error;
+
+          const tbody = document.getElementById("reports-table-body");
+          tbody.innerHTML = "";
+
+          if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-10 text-center text-slate-500 font-medium">No pending reports found. All good! <i class="fa-solid fa-face-smile text-amber-500"></i></td></tr>`;
+            return;
+          }
+
+          data.forEach((report) => {
+            const date = new Date(report.created_at).toLocaleDateString();
+            const qText = report.questions
+              ? report.questions.question_text
+              : "Question deleted or not found.";
+
+            tbody.innerHTML += `
+              <tr class="hover:bg-slate-50/50 transition-colors group">
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase">${report.report_type}</span>
+                    <span class="text-xs text-slate-400 font-medium">Q-ID: ${report.question_id}</span>
+                  </div>
+                  <div class="text-sm font-medium text-slate-800 line-clamp-2" title="${qText}">${qText}</div>
+                </td>
+                <td class="px-6 py-4 font-medium text-slate-500">${date}</td>
+                <td class="px-6 py-4 flex items-center justify-end gap-2">
+                  <button onclick="openEditModal('${report.question_id}')" class="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-blue-200" title="Edit Question">
+                    Fix Issue
+                  </button>
+                  <button onclick="resolveReport('${report.id}')" class="bg-green-50 text-green-600 hover:bg-green-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-green-200" title="Mark as Resolved">
+                    <i class="fa-solid fa-check"></i>
+                  </button>
+                </td>
+              </tr>
+            `;
+          });
+        } catch (error) {
+          showCustomAlert(
+            "Error",
+            "Could not load reports. Did you create the table?",
+            "error",
+          );
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      function resolveReport(reportId) {
+        showCustomConfirm(
+          "Resolve Report",
+          "Are you sure you want to mark this issue as resolved and remove it from the database?",
+          "Yes, Remove it",
+          "Cancel",
+          async () => {
+            showLoading(true);
+            try {
+              // مسح البلاغ من قاعدة البيانات بشكل نهائي بعد التأكد من حله
+              const { error } = await client
+                .from("reported_questions")
+                .delete()
+                .eq("id", reportId);
+
+              if (error) throw error;
+
+              loadReports(); // تحديث الجدول ليختفي البلاغ فوراً
+
+              showCustomAlert(
+                "Success",
+                "Report has been resolved and removed.",
+                "success",
+              );
+            } catch (error) {
+              showCustomAlert(
+                "Error",
+                "Could not resolve report: " + error.message,
+                "error",
+              );
+            } finally {
+              showLoading(false);
+            }
+          },
+        );
+      }
+
+      // ==========================================
+      // PERFORMANCE ANALYTICS LOGIC
+      // ==========================================
+
+      let examsChartInst = null;
+      let questionsChartInst = null;
+
+      // ضبط التواريخ الافتراضية (آخر 7 أيام) عند فتح الصفحة
+      window.addEventListener("DOMContentLoaded", () => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - 6); // آخر أسبوع
+
+        document.getElementById("analysis-end").value = end
+          .toISOString()
+          .split("T")[0];
+        document.getElementById("analysis-start").value = start
+          .toISOString()
+          .split("T")[0];
+      });
+
+      async function loadAnalysisData() {
+        showLoading(true);
+        const startVal = document.getElementById("analysis-start").value;
+        const endVal = document.getElementById("analysis-end").value;
+
+        if (!startVal || !endVal) {
+          showCustomAlert(
+            "Error",
+            "Please select both start and end dates.",
+            "error",
+          );
+          showLoading(false);
+          return;
+        }
+
+        // جعل تاريخ النهاية يشمل اليوم بأكمله
+        const endDateObj = new Date(endVal);
+        endDateObj.setHours(23, 59, 59, 999);
+
+        try {
+          // تحديث الاستعلام لجلب نسبة النجاح (score_percent) أيضاً لحساب المتوسط
+          const { data, error } = await client
+            .from("test_results")
+            .select("created_at, total_questions, score_percent")
+            .gte("created_at", new Date(startVal).toISOString())
+            .lte("created_at", endDateObj.toISOString())
+            .order("created_at", { ascending: true });
+
+          if (error) throw error;
+
+          // ==========================================
+          // 1. حساب الأرقام الإحصائية للكروت السريعة
+          // ==========================================
+          const totalExams = data.length;
+          // جمع كل الأسئلة المحلولة في هذه الفترة
+          const totalQs = data.reduce(
+            (sum, row) => sum + (row.total_questions || 0),
+            0,
+          );
+          // حساب متوسط درجات الطلاب في هذه الفترة
+          const avgScore =
+            totalExams > 0
+              ? Math.round(
+                  data.reduce((sum, row) => sum + (row.score_percent || 0), 0) /
+                    totalExams,
+                )
+              : 0;
+
+          // تحديث الأرقام في الـ HTML
+          document.getElementById("analysis-total-exams").textContent =
+            totalExams;
+          document.getElementById("analysis-total-qs").textContent = totalQs;
+          document.getElementById("analysis-avg-score").textContent =
+            avgScore + "%";
+
+          // ==========================================
+          // 2. تجميع البيانات للرسوم البيانية (Charts)
+          // ==========================================
+          const grouped = {};
+          data.forEach((row) => {
+            const dateObj = new Date(row.created_at);
+            const dateStr = `${dateObj.getDate()}/${dateObj.getMonth() + 1}`;
+
+            if (!grouped[dateStr]) {
+              grouped[dateStr] = { exams: 0, questions: 0 };
+            }
+            grouped[dateStr].exams += 1;
+            grouped[dateStr].questions += row.total_questions || 0;
+          });
+
+          const labels = Object.keys(grouped);
+          const examsData = labels.map((date) => grouped[date].exams);
+          const questionsData = labels.map((date) => grouped[date].questions);
+
+          renderAnalysisCharts(labels, examsData, questionsData);
+        } catch (error) {
+          showCustomAlert(
+            "Error",
+            "Failed to load analytics: " + error.message,
+            "error",
+          );
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      function renderAnalysisCharts(labels, examsData, questionsData) {
+        // 1. رسم منحنى الامتحانات (Line Chart)
+        const ctxExams = document.getElementById("examsChart").getContext("2d");
+        if (examsChartInst) examsChartInst.destroy();
+
+        examsChartInst = new Chart(ctxExams, {
+          type: "line",
+          data: {
+            labels: labels.length > 0 ? labels : ["No Data"],
+            datasets: [
+              {
+                label: "Exams Submitted",
+                data: examsData.length > 0 ? examsData : [0],
+                borderColor: "#3b82f6", // أزرق
+                backgroundColor: "rgba(59, 130, 246, 0.15)",
+                borderWidth: 3,
+                pointBackgroundColor: "#ffffff",
+                pointBorderColor: "#3b82f6",
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                fill: true,
+                tension: 0.4, // لعمل انحناء ناعم للمنحنى
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+            plugins: { legend: { display: false } },
+          },
+        });
+
+        // 2. رسم أعمدة الأسئلة (Bar Chart)
+        const ctxQs = document
+          .getElementById("questionsChart")
+          .getContext("2d");
+        if (questionsChartInst) questionsChartInst.destroy();
+
+        questionsChartInst = new Chart(ctxQs, {
+          type: "bar",
+          data: {
+            labels: labels.length > 0 ? labels : ["No Data"],
+            datasets: [
+              {
+                label: "Questions Solved",
+                data: questionsData.length > 0 ? questionsData : [0],
+                backgroundColor: "rgba(168, 85, 247, 0.85)", // بنفسجي أنيق
+                hoverBackgroundColor: "#9333ea",
+                borderRadius: 6, // حواف دائرية للأعمدة
+                borderSkipped: false,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true },
+              x: { grid: { display: false } }, // إخفاء الشبكة العمودية لنظافة التصميم
+            },
+            plugins: { legend: { display: false } },
+          },
+        });
+      }
+
+      // 6. Logout
+      document
+        .getElementById("logout-btn")
+        .addEventListener("click", async () => {
+          if (confirm("Logout from Admin Panel?")) {
+            await client.auth.signOut();
+            window.location.href = "login.html";
+          }
+        });
+    </script>
+  </body>
+</html>
